@@ -48,6 +48,11 @@ def calculate_embedding_cost(texts):
     total_tokens = sum([len(enc.encode(page.page_content))for page in texts])
     return total_tokens, total_tokens/1000*0.004
 
+# Clearing History
+def clear_history():
+    if 'history' in st.session_state:
+        del st.session_state['history']
+
 if __name__ == "__main__":
     import os
     from dotenv import load_dotenv, find_dotenv
@@ -62,9 +67,9 @@ if __name__ == "__main__":
             os.environ['OPENAI_API_KEY'] = api_key
         
         uploaded_file = st.file_uploader('Upload a PDF File:', type='pdf')
-        chunk_size = st.number_input('Chunk Size:', min_value=100, max_value=2048, value=512)
-        chunk_overlap = st.number_input('Chunk Overlap', min_value=1, max_value=20, value=3)
-        add_data = st.button('Upload PDF')
+        chunk_size = st.number_input('Chunk Size:', min_value=100, max_value=2048, value=512, on_change=clear_history)
+        chunk_overlap = st.number_input('Chunk Overlap', min_value=1, max_value=20, value=3, on_change=clear_history)
+        add_data = st.button('Upload PDF', on_click=clear_history)
 
         if uploaded_file and add_data:
             with st.spinner('Reading your PDF....'):
@@ -92,6 +97,15 @@ if __name__ == "__main__":
             st.write(f'Chunk Overlap: {chunk_overlap}')
             answer = ask_and_get_answer(vector_store, question, chunk_overlap)
             st.text_area('Answer: ', value=answer)
+
+    st.divider()
+    if 'history' not in st.session_state:
+        st.session_state.history = ''
+    value = f'Q: {question} \nA: {answer}'
+    st.session_state.history = f'{value} \n {"-"*100} \n {st.session_state.history}'
+    h = st.session_state.history
+    st.text_area(label='Chat History', value=h, key='history', height=400)
+
 
 
 
