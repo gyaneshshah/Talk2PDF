@@ -19,7 +19,7 @@ def chunk_data(data, chunk_size=256, chunk_overlap=20):
     return chunks
 
 # Create Embeddings
-def insert_or_fetch_embeddings(index_name, chunks):
+def insert_or_fetch_embeddings(chunks, index_name='talk2pdf'):
     import pinecone
     from langchain.vectorstores import Pinecone
     from langchain.embeddings.openai import OpenAIEmbeddings
@@ -27,25 +27,7 @@ def insert_or_fetch_embeddings(index_name, chunks):
 
     pc = pinecone.Pinecone()
     embeddings = OpenAIEmbeddings(model='text-embedding-3-small', dimensions=1536)
-
-    if index_name in pc.list_indexes().names():
-        print(f'Index {index_name} already exists!')
-        print('Loading embeddings')
-        vector_store = Pinecone.from_existing_index(index_name, embeddings)
-        print('Embeddings successfully loaded!')
-    else:
-        print(f'Creating index {index_name} and embeddings...')
-        pc.create_index(
-            name=index_name,
-            dimension=1536,
-            metric='cosine',
-            spec=ServerlessSpec(
-                cloud='aws',
-                region='us-east-1'
-            )
-        )
-        vector_store = Pinecone.from_documents(chunks, embeddings, index_name=index_name)
-        print('Embeddings successfully loaded!')
+    vector_store = Pinecone.from_existing_index(index_name, embeddings)
     return vector_store
 
 # Get Answers
@@ -80,8 +62,30 @@ if __name__ == "__main__":
             os.environ['OPENAI_API_KEY'] = api_key
         
         uploaded_file = st.file_uploader('Upload a PDF File:', type='pdf')
-        chunk_size = st.number_input('Chunk Size:', min_value=1, max_value=20, value=3)
+        chunk_size = st.number_input('Chunk Size:', min_value=100, max_value=2048, value=512)
+        chunk_overlap = st.number_input('Chunk Overlap', min_value=1, max_value=20, value=3)
         add_data = st.button('Upload PDF')
+
+        if uploaded_file and add_data:
+            with st.spinner('Reading your PDF....'):
+                bytes_data = uploaded_file.read()
+                file_name = os.path.join('./', uploaded_file.name)
+                with open(file_name, 'wb') as f:
+                    f.write(bytes_data)
+                
+                data = load_pdf(file_name)
+                chunks = chunk_data(data, chunk_size=chunk_size)
+                st.write(f'Chunk Size: {chunk_size}, Chunks: {len(chunks)}')
+
+                tokens, embedding_cost = calculate_embedding_cost(chunks)
+                st.write(f'Embedding Cost: ${embedding_cost:.4f}')
+
+                vector_store = insert_or_fetch_embeddings(chunks=chunks)
+
+                st.session_state.vs = vector_store
+                st.success('PDF Uploaded and Embedded Successfully!')
+
+
 
 
 
