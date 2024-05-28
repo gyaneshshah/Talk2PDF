@@ -1,5 +1,5 @@
 import streamlit as st
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Pinecone
 import os
 
@@ -70,3 +70,19 @@ if __name__ == "__main__":
     import os
     from dotenv import load_dotenv, find_dotenv
     load_dotenv(find_dotenv(), override=True)
+
+    st.image('talk2PDF_logo.png')
+    st.subheader('Have a conversation with your document!')
+
+    with st.sidebar:
+        api_key = st.text_input('OpenAI API Key:', type='password')
+        if api_key:
+            os.environ['OPENAI_API_KEY'] = api_key
+        
+        uploaded_file = st.file_uploader('Upload a PDF File:', type='pdf')
+        chunk_size = st.number_input('Chunk Size:', min_value=1, max_value=20, value=3)
+        add_data = st.button('Upload PDF')
+
+
+
+
