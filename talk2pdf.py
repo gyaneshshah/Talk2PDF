@@ -85,8 +85,13 @@ if __name__ == "__main__":
                 st.session_state.vs = vector_store
                 st.success('PDF Uploaded and Embedded Successfully!')
 
-
-
+    question = st.text_input('Ask me a question about your PDF')
+    if question:
+        if 'vs' in st.session_state:
+            vector_store = st.session_state.vs
+            st.write(f'Chunk Overlap: {chunk_overlap}')
+            answer = ask_and_get_answer(vector_store, question, chunk_overlap)
+            st.text_area('Answer: ', value=answer)
 
 
 
