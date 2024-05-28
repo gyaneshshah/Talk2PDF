@@ -56,5 +56,17 @@ def ask_and_get_answer(vector_store, q, k=3):
     llm = ChatOpenAI(model='gpt-3.5-turbo', temperature=1)
     retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': k})
     chain = RetrievalQA.from_chain_type(llm=llm, chain_type='stuff', retriever=retriever)
-    answer = chain.run(q)
+    answer = chain.invoke(q)
     return answer
+
+# Calculate Embedding Cost
+def calculate_embedding_cost(texts):
+    import tiktoken
+    enc = tiktoken.encoding_for_model('text-embedding-ada-002')
+    total_tokens = sum([len(enc.encode(page.page_content))for page in texts])
+    return total_tokens, total_tokens/1000*0.004
+
+if __name__ == "__main__":
+    import os
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(), override=True)
