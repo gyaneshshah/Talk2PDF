@@ -69,7 +69,7 @@ if __name__ == "__main__":
         
         uploaded_file = st.file_uploader('Upload a PDF File:', type=['pdf'])
         chunk_size = st.number_input('Chunk Size:', min_value=100, max_value=2048, value=512, on_change=clear_history)
-        k = st.number_input('k', min_value=1, max_value=20, value=3, on_change=clear_history)
+        k = st.number_input('Chunk Overlap:', min_value=1, max_value=20, value=3, on_change=clear_history)
         add_data = st.button('Upload PDF', on_click=clear_history)
 
         if uploaded_file and add_data:
