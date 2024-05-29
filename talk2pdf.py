@@ -19,7 +19,7 @@ def chunk_data(data, chunk_size=256, chunk_overlap=20):
     return chunks
 
 # Create Embeddings
-def insert_or_fetch_embeddings(chunks, index_name='talk2pdf'):
+def create_embeddings(chunks, index_name='talk2pdf'):
     import pinecone
     from langchain.vectorstores import Pinecone
     from langchain.embeddings.openai import OpenAIEmbeddings
@@ -38,7 +38,8 @@ def ask_and_get_answer(vector_store, q, k=3):
     llm = ChatOpenAI(model='gpt-3.5-turbo', temperature=1)
     retriever = vector_store.as_retriever(search_type='similarity', search_kwargs={'k': k})
     chain = RetrievalQA.from_chain_type(llm=llm, chain_type='stuff', retriever=retriever)
-    answer = chain.invoke(q)
+    answer = chain.run(q)
+
     return answer
 
 # Calculate Embedding Cost
@@ -46,7 +47,7 @@ def calculate_embedding_cost(texts):
     import tiktoken
     enc = tiktoken.encoding_for_model('text-embedding-ada-002')
     total_tokens = sum([len(enc.encode(page.page_content))for page in texts])
-    return total_tokens, total_tokens/1000*0.004
+    return total_tokens, total_tokens/1000*0.0004
 
 # Clearing History
 def clear_history():
@@ -66,9 +67,9 @@ if __name__ == "__main__":
         if api_key:
             os.environ['OPENAI_API_KEY'] = api_key
         
-        uploaded_file = st.file_uploader('Upload a PDF File:', type='pdf')
+        uploaded_file = st.file_uploader('Upload a PDF File:', type=['pdf'])
         chunk_size = st.number_input('Chunk Size:', min_value=100, max_value=2048, value=512, on_change=clear_history)
-        chunk_overlap = st.number_input('Chunk Overlap', min_value=1, max_value=20, value=3, on_change=clear_history)
+        k = st.number_input('k', min_value=1, max_value=20, value=3, on_change=clear_history)
         add_data = st.button('Upload PDF', on_click=clear_history)
 
         if uploaded_file and add_data:
@@ -85,27 +86,26 @@ if __name__ == "__main__":
                 tokens, embedding_cost = calculate_embedding_cost(chunks)
                 st.write(f'Embedding Cost: ${embedding_cost:.4f}')
 
-                vector_store = insert_or_fetch_embeddings(chunks=chunks)
+                vector_store = create_embeddings(chunks=chunks)
 
                 st.session_state.vs = vector_store
                 st.success('PDF Uploaded and Embedded Successfully!')
 
-    question = st.text_input('Ask me a question about your PDF')
-    if question:
+    q = st.text_input('Ask me a question about your PDF')
+    if q:
+        standard_answer = "Answer only based on the text you received as input. Don't search external sources. " \
+                          "If you can't answer then return `I don't know, please try again after sometime`."
+        q = f"{q} {standard_answer}"
         if 'vs' in st.session_state:
             vector_store = st.session_state.vs
-            st.write(f'Chunk Overlap: {chunk_overlap}')
-            answer = ask_and_get_answer(vector_store, question, chunk_overlap)
+            st.write(f'k: {k}')
+            answer = ask_and_get_answer(vector_store, q, k)
             st.text_area('Answer: ', value=answer)
 
-    st.divider()
-    if 'history' not in st.session_state:
-        st.session_state.history = ''
-    value = f'Q: {question} \nA: {answer}'
-    st.session_state.history = f'{value} \n {"-"*100} \n {st.session_state.history}'
-    h = st.session_state.history
-    st.text_area(label='Chat History', value=h, key='history', height=400)
-
-
-
-
+            st.divider()
+            if 'history' not in st.session_state:
+                st.session_state.history = ''
+            value = f'Q: {q} \nA: {answer}'
+            st.session_state.history = f'{value} \n {"-"*100} \n {st.session_state.history}'
+            h = st.session_state.history
+            st.text_area(label='Chat History', value=h, key='history', height=400)
